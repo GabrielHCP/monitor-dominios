@@ -1,4 +1,5 @@
 import Dominio from "../models/Dominio.js";
+import tratarErro from "../helpers/tratarErro.js";
 
 class DominioController {
     static async listarDominios(req, res) {
@@ -6,42 +7,57 @@ class DominioController {
             const listaDominios = await Dominio.find({});
             res.status(200).json(listaDominios);
         } catch (err) {
-            res.status(500).json({ message: `${err.message} - falha na requisição` });
+            tratarErro(err, res);
         }
     }
     static async listaDominioPorId(req, res) {
         try {
             const id = req.params.id;
             const dominioEncontrado = await Dominio.findById(id);
+            if(!dominioEncontrado) {
+               return res.status(404).json({message: "Domínio não encontrado"});
+            }
             res.status(200).json(dominioEncontrado);
         } catch (err) {
-            res.status(500).json({ message: `${err.message} - falha na requisição` });
+            tratarErro(err, res);
         }
     }
     static async cadastrarDominio(req, res) {
         try {
-            const novoDominio = await Dominio.create(req.body);
-            res.status(201).json({ message: "Domínio criado com sucesso", dominio: novoDominio });
+            const {nome, dono, seletorDKIM} = req.body;
+            const novoDominio = await Dominio.create({nome, dono, seletorDKIM});
+            res.status(201).json({message: "Domínio criado com sucesso", dominio: novoDominio});
         } catch (err) {
-            res.status(500).json({ message: `${err.message} - falha ao cadastrar domínio na base de dados` })
+            tratarErro(err, res);
         }
     }
     static async atualizaDominioPorId(req, res) {
         try {
             const id = req.params.id;
-            await Dominio.findByIdAndUpdate(id, req.body);
-            res.status(200).json({ message: "Domínio atualizado com sucesso" });
+            const {seletorDKIM, ativo} = req.body;
+            const dominioAtualizado = await Dominio.findByIdAndUpdate(
+                id, 
+                {seletorDKIM, ativo},
+                {new: true, runValidators: true}
+            );
+            if(!dominioAtualizado) {
+                return res.status(404).json({message: "Domínio não encontrado para realizar a atualização"});
+            }
+            res.status(200).json({message: "Domínio atualizado com sucesso", dominio: dominioAtualizado});
         } catch (err) {
-            res.status(500).json({ message: `${err.message} - falha ao atualizar domínio na base de dados` })
+            tratarErro(err, res);
         }
     }
     static async deletaDominioPorId(req, res) {
         try {
             const id = req.params.id;
-            await Dominio.findByIdAndDelete(id);
-            res.status(200).json({ message: "Domínio removido com sucesso" });
+            const dominioDeletado = await Dominio.findByIdAndDelete(id);
+            if(!dominioDeletado) {
+                return res.status(404).json({message: "Domínio não encontrado para deletar"});
+            }
+            res.status(200).json({message: "Domínio removido com sucesso"});
         } catch (err) {
-            res.status(500).json({ message: `${err.message} - falha ao remover domínio na base de dados` })
+            tratarErro(err, res);
         }   
     }
 }
